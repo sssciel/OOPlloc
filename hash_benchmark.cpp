@@ -6,6 +6,7 @@
 #include <sys/wait.h>
 #include <iostream>
 #include <chrono>
+#include <random>
 #include <string>
 #include <jemalloc/jemalloc.h>
 #include <umalloc.h>
@@ -121,7 +122,7 @@ public:
     }
 };
 
-const std::vector<int64_t> operations_count = {5000, 10000, 50000, 100000};
+const std::vector<int64_t> operations_count = {10000000, 50000000, 100000000, 250000000};
 
 enum {
     OPERATIONS_COUNT = 100000000,
@@ -141,33 +142,39 @@ unsigned int hash_get(void* data, size_t size) {
 
 
 void test(Allocator& allocator, int64_t test_times, std::vector<void*>& blocks) {
-    for (int i = 0; i < test_times; ++i) {
-        if (!blocks[i]) {
-            blocks[i] = allocator.allocate(BLOCK_SIZE);
-            memset(blocks[i], rand() % 256, BLOCK_SIZE);
-            unsigned int hash = hash_get(blocks[i], BLOCK_SIZE);
-        }
-    }
 
-    for (int i = 0; i < test_times / 2; ++i) {
-        int index = rand() % test_times;
-        if (!blocks[index]) {
-            allocator.deallocate(blocks[index]);
-            blocks[index] = nullptr;
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution<> dis(0, 10000);
+    for (int k = 0; k < 5; ++k) {
+        for (int i = 0; i < test_times; ++i) {
+            if (!blocks[i]) {
+                blocks[i] = allocator.allocate(BLOCK_SIZE);
+                memset(blocks[i], dis(gen) % 256, BLOCK_SIZE);
+                unsigned int hash = hash_get(blocks[i], BLOCK_SIZE);
+            }
         }
-    }
 
-    for (int i = 0; i < test_times; ++i) {
-        if (!blocks[i]) {
-            blocks[i] = allocator.allocate(BLOCK_SIZE);
-            memset(blocks[i], rand() % 256, BLOCK_SIZE);
-            unsigned int hash = hash_get(blocks[i], BLOCK_SIZE);
+        for (int i = 0; i < test_times / 2; ++i) {
+            int index = dis(gen) % test_times;
+            if (!blocks[index]) {
+                allocator.deallocate(blocks[index]);
+                blocks[index] = nullptr;
+            }
         }
-    }
 
-    for (void* block : blocks) {
-        if (block) {
-            allocator.deallocate(block);
+        for (int i = 0; i < test_times; ++i) {
+            if (!blocks[i]) {
+                blocks[i] = allocator.allocate(BLOCK_SIZE);
+                memset(blocks[i], dis(gen) % 256, BLOCK_SIZE);
+                unsigned int hash = hash_get(blocks[i], BLOCK_SIZE);
+            }
+        }
+
+        for (void* block : blocks) {
+            if (block) {
+                allocator.deallocate(block);
+            }
         }
     }
 }
@@ -181,10 +188,8 @@ double get_time(void (*func)(Allocator& allocator, int64_t test_times, std::vect
 
     auto start = std::chrono::high_resolution_clock::now();
 
-    for (int i = 0; i < 100000; ++i) {
-        blocks.clear();
-        test(allocator, test_times, blocks);
-    }
+    blocks.clear();
+    test(allocator, test_times, blocks);
 
     auto end = std::chrono::high_resolution_clock::now();
     auto time_taken = std::chrono::duration<double>(end-start).count();
