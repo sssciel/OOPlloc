@@ -59,19 +59,3 @@ public:
         }
     }
 };
-
-// int main() {
-//     block_class allocator(1024);
-
-//     void* ptr1 = allocator.allocate(128);
-//     void* ptr2 = allocator.allocate(128);
-
-//     std::cout << "Блоки выделены." << std::endl;
-
-//     allocator.deallocate(ptr1);
-//     allocator.deallocate(ptr2);
-
-//     std::cout << "Блоки освобождены." << std::endl;
-
-//     return 0;
-// }

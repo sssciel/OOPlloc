@@ -70,19 +70,3 @@ public:
         }
     }
 };
-
-// int main() {
-//     slabs_class allocator(128);
-
-//     void* ptr1 = allocator.allocate();
-//     void* ptr2 = allocator.allocate();
-
-//     std::cout << "Блоки выделены." << std::endl;
-
-//     allocator.deallocate(ptr1);
-//     allocator.deallocate(ptr2);
-
-//     std::cout << "Блоки освобождены." << std::endl;
-
-//     return 0;
-// }
