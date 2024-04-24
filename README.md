@@ -6,4 +6,13 @@
 2. В папке implementations представлены существующие имплементации структур и алгоритмов аллокаторов памяти, такие как SSS (Simple Segregated Storage), Slab allocator, а также Segmented allocator. Их описание было взято из научных статей и книг. Например "Memory Management Algorithms and Implementation in C/C++ by Bill Blunden"
 3. В папке OOPAllocator представлена сама реализация проекта.
 
+## Компиляция
+1. Компиляция бенчмарка происходила командой
+
+```
+g++ benchmarks/new_super_puper_benchmark.cpp -std=c++20 -I. -L. -ljemalloc -lumalloc -ltlsf -o main  && ./main.
+```
+
+Для того, чтобы скомпилировать бенчмарк для тестирования имплементаций структур, необходим флаг **-DSTRUCTSTEST**.
+
 *Текст проекта может быть предоставлен по договоренности.*
