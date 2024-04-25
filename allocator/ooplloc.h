@@ -1,6 +1,9 @@
 #ifndef OOPLLOC_H
 #define OOPLLOC_H
 
+#pragma once
+#include "atomicStructs.h"
+
 //------------------------------------------------------------------------------
 // ShortCuts
 //------------------------------------------------------------------------------
@@ -19,9 +22,7 @@
 //------------------------------------------------------------------------------
 // Declarations
 //------------------------------------------------------------------------------
-/*
-Freelist of blocks
-*/
+#ifdef THREAD_PROTECTION
 struct oBlock {
     oBlock* block;
 };
@@ -33,13 +34,18 @@ struct oPage {
     oPage* page;
     UI1 usedBlocks;
 };
-
+#endif
 /*
 Allocator struct
 */
 struct OOPLloc_Allocator {
-    oBlock* freeStack = nullptr; // stack of free blocks
+    #ifdef THREAD_PROTECTION
+    oBlock* freeStack = nullptr;
     oPage* pageStack = nullptr;
+    #else
+    AtomicFreeList freeStack; // stack of free blocks
+    AtomicStack pageStack;
+    #endif
     void* mainAdress = nullptr; // adress of last allocated block
     UI1 blockSize;
     UI1 pageSize;
@@ -60,11 +66,13 @@ struct OOPLloc_Allocator {
     inline bool isEnoughMem();
 
     void allocateNewPage();
+    #ifdef THREAD_PROTECTION
     inline void blockPush(void* child);
     inline void* blockPop();
 
     void pagePush(void* address);
     void* pageDelete(void* address);
+    #endif
 
     inline void* getNewBlock();
 

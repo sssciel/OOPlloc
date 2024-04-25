@@ -7,6 +7,9 @@
 #include <stdio.h>
 #include <sys/mman.h>
 #include "ooplloc.h"
+#ifndef THREAD_PROTECTION
+#include "atomicStructs.h"
+#endif
 
 //------------------------------------------------------------------------------
 // Definitions
@@ -32,26 +35,12 @@ Functions for working with the freelist stack of pages and blocks.
 They use simple pointers and their movements. 
 Mutex is used for atomicity
 */
-// allocateNewPage() allocates the memory available for the allocator.
-void OOPLloc_Allocator::allocateNewPage() {
-    void* ptr = mmap(NULL, pageSize, PROT_ACCESS, MAP_ACCESS, -1, 0);
-    if (ptr == MAP_FAILED) {
-        perror("mmap");
-        exit(EXIT_FAILURE);
-    }
-
-    mainAdress = ptr;
-    pageCapacity = pageSize / blockSize - 1;
-    usedBlocks = 1;
-    blockPush(ptr);
-    ++allocatedPages;
-}
-
+#ifdef THREAD_PROTECTION
 // blockPush() add new free block to list.
 void OOPLloc_Allocator::blockPush(void* child) {
-    if (child == nullptr) return; // Избегаем избыточных проверок
+    if (child == nullptr) return;
     oBlock* block = static_cast<oBlock*>(child);
-    block->block = freeStack; // Добавляем в стек свободных блоков
+    block->block = freeStack;
     freeStack = block;
 }
 
@@ -79,6 +68,27 @@ void OOPLloc_Allocator::pagePush(void* address) {
     page->usedBlocks = 0;
     pageStack = page;
 }
+#endif
+
+// allocateNewPage() allocates the memory available for the allocator.
+void OOPLloc_Allocator::allocateNewPage() {
+    void* ptr = mmap(NULL, pageSize, PROT_ACCESS, MAP_ACCESS, -1, 0);
+    if (ptr == MAP_FAILED) {
+        perror("mmap");
+        exit(EXIT_FAILURE);
+    }
+
+    mainAdress = ptr;
+    pageCapacity = pageSize / blockSize - 1;
+    usedBlocks = 1;
+    #ifdef THREAD_PROTECTION
+    blockPush(ptr);
+    #else
+    freeStack.push(ptr);
+    pageStack.push(ptr);
+    #endif
+    ++allocatedPages;
+}
 
 void* OOPLloc_Allocator::getNewBlock() {
     if (isEnoughMem()) {
@@ -87,10 +97,13 @@ void* OOPLloc_Allocator::getNewBlock() {
         return mainAdress;
     } else {
         allocateNewPage();
+        #ifdef THREAD_PROTECTION
         return blockPop();
+        #else
+        return freeStack.pop();
+        #endif
     }
 }
-
 /*
 Without arguments, the constructor takes the default values declared in the header file. 
 Memory allocation takes place via mmap, addresses are stored on the stack, 
@@ -104,6 +117,14 @@ OOPLloc_Allocator::OOPLloc_Allocator() {
 }
 
 OOPLloc_Allocator::~OOPLloc_Allocator() {
+    // #ifdef THREAD_PROTECTION
+    // #else
+    // while(allocatedPages--) {
+    //     if (munmap(pageStack.pop(), pageSize) == -1) {
+    // #endif
+    //         std::cerr << "munmap failed" << std::endl;
+    //     }
+    // } 
 }
 
 OOPLloc_Allocator::OOPLloc_Allocator(UI1 pSize) {
@@ -122,12 +143,24 @@ OOPLloc_Allocator::OOPLloc_Allocator(UI1 pSize, UI1 bSize) {
 /*end cunstructors*/
 
 void* OOPLloc_Allocator::alloc() {
+    #ifdef THREAD_PROTECTION
     if (freeStack == nullptr) {
+    #else
+    if (freeStack.is_empty()) {
+    #endif
         return getNewBlock();
     }
+    #ifdef THREAD_PROTECTION
     return blockPop();
+    #else
+    return freeStack.pop();
+    #endif
 }
 
 void OOPLloc_Allocator::free(void* p) {
+    #ifdef THREAD_PROTECTION
     blockPush(p);
+    #else
+    freeStack.push(p);
+    #endif
 }
