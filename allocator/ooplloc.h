@@ -14,7 +14,7 @@
 // MagicNumbers
 //------------------------------------------------------------------------------
 #define DEFAULT_BLOCK_SIZE 8
-#define DEFAULT_PAGE_SIZE (1 << 12)
+#define DEFAULT_PAGE_SIZE (1 << 14)
 
 //------------------------------------------------------------------------------
 // Declarations
@@ -38,12 +38,14 @@ struct oPage {
 Allocator struct
 */
 struct OOPLloc_Allocator {
-    oBlock* freeStack; // stack of free blocks
-    oPage* pageStack;
-    void* mainAdress; // adress of last allocated block
+    oBlock* freeStack = nullptr; // stack of free blocks
+    oPage* pageStack = nullptr;
+    void* mainAdress = nullptr; // adress of last allocated block
     UI1 blockSize;
     UI1 pageSize;
     UI1 usedBlocks;
+    UI1 allocatedPages;
+    UI1 pageCapacity;
 
     /* Constructors */
     OOPLloc_Allocator();
@@ -52,19 +54,19 @@ struct OOPLloc_Allocator {
     ~OOPLloc_Allocator();
 
     /* Service functions */
-    inline UI1 getBlockSize(); // inline for optimization
-    inline UI1 getPageSize();
-    inline UI1 getUsedBlocks();
+    UI1 getBlockSize(); // inline for optimization
+    UI1 getPageSize();
+    UI1 getUsedBlocks();
     inline bool isEnoughMem();
 
     void allocateNewPage();
-    void blockPush(void* child);
-    void* blockPop();
+    inline void blockPush(void* child);
+    inline void* blockPop();
 
     void pagePush(void* address);
     void* pageDelete(void* address);
 
-    void* getNewBlock();
+    inline void* getNewBlock();
 
     /* Main functions */
     void* alloc();
