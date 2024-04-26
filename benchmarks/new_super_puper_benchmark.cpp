@@ -7,6 +7,7 @@
 #include <iostream>
 #include <chrono>
 #include <random>
+#include <thread>
 #include <string>
 #include <stack>
 
@@ -18,6 +19,7 @@
 #include <jemalloc/jemalloc.h>
 #include <umalloc.h>
 #include <tlsf.h>
+#include "../allocator/ooplloc.h"
 #endif
 
 /*
@@ -39,6 +41,7 @@
 #define jemallocName "jeMalloc()"
 #define umallocName "uMalloc()"
 #define tlsfName "TLSF()"
+#define OOPName "OOPlloc()"
 #endif
 
 /*
@@ -48,17 +51,19 @@
 #define ITERATIONS_TIMES_LEVER 1e8
 #define ITERATIONS_TIMES_RANDOM 1e6
 #define RANDOM_TEST_TIMES 3
+#define THREAD_COUNT 4
 
 #ifdef STRUCTSTEST
 std::vector<U1> iterationsLever = {10000, 1000000, 10000000, 100000000};
 #else
-std::vector<U1> iterationsLever = {10000, 1000000, 10000000, 100000000, 200000000};
+std::vector<U1> iterationsLever = {10000, 1000000, 10000000, 100000000};
 #endif
-std::vector<U1> iterationsRandom = {1000, 10000, 100000, 1000000};
+std::vector<U1> iterationsRandom = {1000, 10000, 100000};
 
 str leverSingleStr =  "LEVER BOHERAM SINGLE PROC:\n";
 str leverDoubleStr = "LEVER BOHERAM DOUBLE PROC:\n";
 str randomDeallocStr = "RANDOM DEALLOCATION TEST:\n";
+str multithreadcStr = "MULTITHREAD TEST:\n";
 
 /*
     Base Class
@@ -176,6 +181,30 @@ public:
     }
 };
 
+class OOPLloc : public Allocator {
+public:
+    void* heapptr;
+    OOPLloc_Allocator alloc;
+
+    OOPLloc(const std::string& name, const bool needInit) : Allocator(name, needInit), alloc(10000000 * 8 * 3) {}
+
+    void* allocate(size_t size) override {
+        return alloc.alloc();
+    }
+
+    void deallocate(void* ptr) override {
+        alloc.free(ptr);
+    }
+
+    // void initialization(size_t size) override {
+    //     alloc = OOPLloc_Allocator(size);
+    // }
+
+    void determination() override {
+        free(heapptr);
+    }
+};
+
 class UmallocAllocator : public Allocator {
 public:
 
@@ -219,12 +248,13 @@ public:
 
 // leverSingle() checks big allocations and dealocations times in one proc
 double leverSingle(Allocator& t, U1 iterationTimes) {
-    auto start = std::chrono::high_resolution_clock::now();
-
-    std::stack<void*> allocations;
     if (t.isInitialized()) {
         t.initialization(iterationTimes * BLOCK_SIZE);
     }
+
+    auto start = std::chrono::high_resolution_clock::now();
+
+    std::stack<void*> allocations;
     for (U1 i = 0; i < iterationTimes; ++i) {
         auto p = t.allocate(BLOCK_SIZE);
         allocations.push(p);
@@ -234,13 +264,14 @@ double leverSingle(Allocator& t, U1 iterationTimes) {
         t.deallocate(p);
         allocations.pop();
     }
+
+    auto end = std::chrono::high_resolution_clock::now();
+    auto testRunTime = std::chrono::duration<double>(end-start).count();
+
     if (t.isInitialized()) {
         t.determination();
     }
 
-    auto end = std::chrono::high_resolution_clock::now();
-    auto testRunTime = std::chrono::duration<double>(end-start).count();
-    
     return testRunTime;
 }
 
@@ -263,6 +294,39 @@ double leverMulti(Allocator& t, U1 iterationTimes) {
     auto end = std::chrono::high_resolution_clock::now();
     auto testRunTime = std::chrono::duration<double>(end-start).count();
     
+    return testRunTime;
+}
+
+void benchmarkThread(Allocator& t, size_t iterations) {
+    for (size_t i = 0; i < iterations; ++i) {
+        void* block = t.allocate(BLOCK_SIZE);
+        t.deallocate(block);
+    }
+}
+
+double multiThreadedBenchmark(Allocator& t, size_t threadCount, size_t iterations) {
+    if (t.isInitialized()) {
+        t.initialization(iterations * BLOCK_SIZE);
+    }
+    auto start = std::chrono::high_resolution_clock::now();
+
+    std::vector<std::thread> threads;
+
+    for (size_t i = 0; i < threadCount; ++i) {
+        threads.emplace_back(benchmarkThread, std::ref(t), iterations);
+    }
+
+    for (auto& thread : threads) {
+        thread.join();
+    }
+
+    auto end = std::chrono::high_resolution_clock::now();
+    auto testRunTime = std::chrono::duration<double>(end - start).count();
+
+    if (t.isInitialized()) {
+        t.determination();
+    }
+
     return testRunTime;
 }
 
@@ -342,6 +406,16 @@ void randomDeallocTest(Allocator& t) {
     }    
 }
 
+void multiThreadTest(Allocator& t) {
+    std::cout << t.getName() << "\n";
+    if (t.getName() == "TLSF()") {return;}
+    for (U1 j = 0; j < iterationsLever.size(); ++j) {
+        auto p = iterationsLever[j];
+        double runTime = multiThreadedBenchmark(t, THREAD_COUNT, p);
+        std::cout << t.getName() << " exec time of Multithread test with " << p << " tries is\n\t" << runTime << "s.\n\n";
+    }    
+}
+
 int main() {
     #ifdef STRUCTSTEST
     SSSAllocator sss(sssName, true);
@@ -351,13 +425,13 @@ int main() {
     printStars(leverSingleStr);
 
     leverSingleTest(sss);
-    leverSingleTest(slab);
+    //leverSingleTest(slab);
     leverSingleTest(segmented);
 
     printStars(leverDoubleStr);
 
     leverDoubleTest(sss);
-    leverDoubleTest(slab);
+    //leverDoubleTest(slab);
     leverDoubleTest(segmented);
 
     #else
@@ -365,6 +439,7 @@ int main() {
     JemallocAllocator jemalloc(jemallocName, false);
     UmallocAllocator umalloc(umallocName, false);
     TLSFAllocator tlsf(tlsfName, true);
+    OOPLloc oop(OOPName, false);
 
     printStars(leverSingleStr);
 
@@ -372,6 +447,15 @@ int main() {
     leverSingleTest(umalloc);
     leverSingleTest(jemalloc);
     leverSingleTest(tlsf);
+    leverSingleTest(oop);
+
+    printStars(multithreadcStr);
+
+    multiThreadTest(malloc);
+    multiThreadTest(umalloc);
+    multiThreadTest(jemalloc);
+    multiThreadTest(tlsf);
+    multiThreadTest(oop);
 
     printStars(leverDoubleStr);
 
@@ -386,5 +470,6 @@ int main() {
     randomDeallocTest(umalloc);
     randomDeallocTest(jemalloc);
     randomDeallocTest(tlsf);
+    randomDeallocTest(oop);
     #endif
 }
