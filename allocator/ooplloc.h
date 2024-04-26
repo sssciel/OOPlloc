@@ -17,69 +17,63 @@
 // MagicNumbers
 //------------------------------------------------------------------------------
 #define DEFAULT_BLOCK_SIZE 8
-#define DEFAULT_PAGE_SIZE (1 << 14)
+#define DEFAULT_PAGE_SIZE (1 << 16)
 
 //------------------------------------------------------------------------------
 // Declarations
 //------------------------------------------------------------------------------
-#ifdef THREAD_PROTECTION
+/*
+Block struct
+*/
 struct oBlock {
     oBlock* block;
 };
 
 /*
-Freelist of pages
-*/
-struct oPage {
-    oPage* page;
-    UI1 usedBlocks;
-};
-#endif
-/*
 Allocator struct
 */
 struct OOPLloc_Allocator {
-    #ifdef THREAD_PROTECTION
-    oBlock* freeStack = nullptr;
-    oPage* pageStack = nullptr;
-    #else
-    AtomicFreeList freeStack; // stack of free blocks
-    AtomicStack pageStack;
-    #endif
-    void* mainAdress = nullptr; // adress of last allocated block
-    UI1 blockSize;
-    UI1 pageSize;
-    UI1 usedBlocks;
-    UI1 allocatedPages;
-    UI1 pageCapacity;
+    oBlock* freeStack = nullptr; // Список свободных блоков
+    AtomicStack pageStack; // Стэк инициализированных страниц
+
+    void* mainAdress = nullptr; // Адресс блока, на котором остановлено аллоцирование
+    UI1 blockSize; // Размер блока
+    UI1 pageSize; // Размер страницы
+    UI1 usedBlocks; // Количество использованных блоков
+    UI1 allocatedPages; // Количество аллоцированных страниц
+    UI1 pageCapacity; // Вместимость страницы
 
     /* Constructors */
     OOPLloc_Allocator();
     OOPLloc_Allocator(UI1 bSize);
     OOPLloc_Allocator(UI1 bSize, UI1 pSize);
+
+    /* Destructors */
     ~OOPLloc_Allocator();
 
     /* Service functions */
-    UI1 getBlockSize(); // inline for optimization
-    UI1 getPageSize();
-    UI1 getUsedBlocks();
+    inline UI1 getBlockSize();
+    inline UI1 getPageSize();
+    inline UI1 getUsedBlocks();
     inline bool isEnoughMem();
 
-    void allocateNewPage();
-    #ifdef THREAD_PROTECTION
-    inline void blockPush(void* child);
-    inline void* blockPop();
+    void allocateNewPage(); // Инициализировать новую страницу
+    inline void blockPush(void* child); // Вставить блок в список
+    inline void* blockPop(); // Получить блок из списка
 
-    void pagePush(void* address);
-    void* pageDelete(void* address);
-    #endif
-
-    inline void* getNewBlock();
+    inline void* getNewBlock(); // Получить новый блок
 
     /* Main functions */
-    void* alloc();
-    void free(void* p);
-    void* calloc();
+    void* alloc(); // Аллоцирование
+    void free(void* p); // Освобождение
+
+    template <typename T>
+    void* ialloc(const T& source); // Аллоцирование с имплементацией
+
+    void arrlloc(std::vector<void*>& vec); // Заполняет вектор необходимым количеством аллоцированных адресов
+    void arrlloc(std::vector<void*>& vec, UI1 count); // Заполняет вектор необходимым количеством аллоцированных адресов
+
+    void arrfree(std::vector<void*>& vec); // Освобождает вектор адресов
 };
 
 #endif /* OOPLLOC_H */

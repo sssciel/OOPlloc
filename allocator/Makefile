@@ -11,7 +11,7 @@ SRCS = main.cpp ooplloc.cpp
 OBJS = main.o ooplloc.o
 
 # Исполняемый файл
-TARGET = /Users/enmanish/Desktop/study/OOPlloc/allocator/main
+TARGET = /Users/enmanish/Desktop/study/temp/OOPlloc/allocator/main
 
 # Правило для компиляции объектных файлов
 %.o: %.cpp
