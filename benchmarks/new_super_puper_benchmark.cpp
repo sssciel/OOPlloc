@@ -196,10 +196,6 @@ public:
         alloc.free(ptr);
     }
 
-    // void initialization(size_t size) override {
-    //     alloc = OOPLloc_Allocator(size);
-    // }
-
     void determination() override {
         free(heapptr);
     }
@@ -425,13 +421,13 @@ int main() {
     printStars(leverSingleStr);
 
     leverSingleTest(sss);
-    //leverSingleTest(slab);
+    leverSingleTest(slab);
     leverSingleTest(segmented);
 
     printStars(leverDoubleStr);
 
     leverDoubleTest(sss);
-    //leverDoubleTest(slab);
+    leverDoubleTest(slab);
     leverDoubleTest(segmented);
 
     #else
