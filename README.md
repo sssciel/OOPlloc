@@ -13,6 +13,37 @@
 g++ benchmarks/new_super_puper_benchmark.cpp -std=c++20 -I. -L. -ljemalloc -lumalloc -ltlsf -o main  && ./main.
 ```
 
+2. Компиляция бенчмарка Google
+
+```
+g++ test.cpp -std=c++11 -isystem benchmark/include \
+  -Lbenchmark/build/src -lbenchmark -lpthread ooplloc.cpp atomicStructs.cpp Fault.cpp LockGuard.cpp -DTHREAD_SAFE -o mybenchmark && ./mybenchmark
+```
+
+3. Компиляция аллокатора
+Для теста аллокатора был написан main.cpp в папке allocator, в нем же находится Makefile.
+
+```
+make && ./main
+```
+
+## Использование
+```
+OOPLloc_Allocator all; // Инициализирует аллокатор стандартных размеров
+OOPLloc_Allocator all1(4096); // Инициализирует аллокатор со страницами размера 4096B
+OOPLloc_Allocator all2(4096, 16); // Инициализирует аллокатор со страницами размера 4096B и блоками размера 16B
+
+void* ptr = all.alloc(); // Аллоцирует блок заданной при инициализации длинны
+all.free(ptr); // Освобождает блок заданной при инициализации длинны
+
+int a = 10;
+void* ptr1 = all.ialloc(a); // Аллоцирует блок с определенным параметром
+
+std::vector<void*> allocated_pool;
+all.arrlloc(&allocated_pool, 10); // Заполнит вектор 10 аллоцированными блоками
+```
+
 Для того, чтобы скомпилировать бенчмарк для тестирования имплементаций структур, необходим флаг **-DSTRUCTSTEST**.
+Для того, чтобы скомпилировать аллокатор в режиме отключения THREAD_SAFE, необходим флаг **-DTHREAD_SAFE**.
 
 *Текст проекта может быть предоставлен по договоренности.*
