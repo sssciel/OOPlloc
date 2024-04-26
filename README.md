@@ -17,7 +17,7 @@ g++ benchmarks/new_super_puper_benchmark.cpp -std=c++20 -I. -L. -ljemalloc -luma
 
 ```
 g++ test.cpp -std=c++11 -isystem benchmark/include \
-  -Lbenchmark/build/src -lbenchmark -lpthread ooplloc.cpp atomicStructs.cpp Fault.cpp LockGuard.cpp -DTHREAD_SAFE -o mybenchmark && ./mybenchmark
+  -Lbenchmark/build/src -lbenchmark -lpthread ooplloc.cpp atomicStructs.cpp mutexLock.cpp -DTHREAD_SAFE -o mybenchmark && ./mybenchmark
 ```
 
 3. Компиляция аллокатора
