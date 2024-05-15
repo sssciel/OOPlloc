@@ -54,7 +54,7 @@ struct OOPLloc_Allocator {
     /* Service functions */
     inline UI1 getBlockSize();
     inline UI1 getPageSize();
-    inline UI1 getUsedBlocks();
+    UI1 getUsedBlocks();
     inline bool isEnoughMem();
 
     void allocateNewPage(); // Инициализировать новую страницу
